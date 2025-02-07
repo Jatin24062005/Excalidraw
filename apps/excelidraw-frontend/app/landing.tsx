@@ -10,7 +10,7 @@ export const LandingPage = () => {
     const { user, logoutUser } = useUser();
     console.log(user.name);
     const User = user && user.name ? true : false;
-
+  
      
     return (
         <div className="min-h-screen bg-background">

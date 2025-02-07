@@ -1,45 +1,38 @@
-"use client";
+"use client"; // Ensure this is at the top
+
 import React, { useEffect, useState } from "react";
 import { WS_URL } from "@/config";
 import Canvastest from "./Canvas";
 
-// Function to get cookie by name
-const getCookie = (name: string) => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(";").shift();
-  return null;
-};
+
 
 export function RoomCanvas({ roomId }: { roomId: string }) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
-  
-  
-  // Get JWT token from cookies
+  const [token, setToken] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/get-token")
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Token from API:", data.token);
+        setToken(data.token);
+      });
+  }, []);
 
-  const token: string | null | undefined = getCookie("token");  // Replace with your actual cookie name
-  console.log(token);
   useEffect(() => {
     if (token) {
       const ws = new WebSocket(`${WS_URL}?token=${token}`);
 
       ws.onopen = () => {
         setSocket(ws);
-        const data = JSON.stringify({
-          type: "join_room",
-          roomId,
-        });
-        console.log(data);
-        ws.send(data);
+        ws.send(
+          JSON.stringify({
+            type: "join_room",
+            roomId,
+          })
+        );
       };
 
-      return () => {
-        if (ws) {
-          ws.close();
-        }
-      };
-    } else {
-     
+      return () => ws.close();
     }
   }, [token, roomId]);
 

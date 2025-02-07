@@ -27,6 +27,7 @@ function checkUser(token: string): string | null {
 
     return decoded.userId;
   } catch(e) {
+    console.log(e);
     return null;
   }
   return null;
