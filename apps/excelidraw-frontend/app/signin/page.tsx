@@ -1,5 +1,11 @@
 import { AuthPage } from "@/components/AuthPage";
+import { UserProvider } from "../ContextApi";
+
 
 export default function Signin() {
-    return <AuthPage isSignin={true} />
-}
+
+    return (
+             <UserProvider>
+             <AuthPage isSignin={true} />
+             </UserProvider>
+)}
