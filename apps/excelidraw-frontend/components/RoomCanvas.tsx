@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { WS_URL } from "@/config";
-import Canvastest from "./Canvas";
+import Canvastest1 from "./Canvas";
 
 
 
@@ -42,7 +42,7 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
 
   return (
     <div>
-      <Canvastest roomId={roomId} socket={socket} />
+      <Canvastest1 roomId={roomId} socket={socket} />
     </div>
   );
 }

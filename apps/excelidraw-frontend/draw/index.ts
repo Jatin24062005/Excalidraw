@@ -13,4 +13,3 @@ export const getExistingShapes = async (roomId : string)=>{
     })
     return shapes;
 }
-

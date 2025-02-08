@@ -5,7 +5,7 @@ export const sendChatMessage =({socket,canvas,roomId}:{socket:WebSocket; canvas:
         const shapes = canvas.getObjects().map((obj)=>{
             return{
                 type:obj.type,
-                specefication:obj.toObject()
+                specefication: obj.toObject()
             }
         });
           

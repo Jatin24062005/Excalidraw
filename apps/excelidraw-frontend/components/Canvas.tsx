@@ -1,11 +1,10 @@
 "use client";
-import { Canvas, Circle, Rect ,PencilBrush} from "fabric";
+import { Canvas, Circle, Rect ,PencilBrush, ObjectModifyingLayoutContext} from "fabric";
 import { useEffect, useRef, useState } from "react";
 import { SquareIcon, CircleIcon, PencilIcon, EraserIcon, HandIcon } from "./Icons.jsx"; // Assuming you have EraserIcon and HandIcon
 import { Setting } from '../app/canvas/[roomId]/setting.jsx';
-import { RoomCanvas } from "./RoomCanvas.tsx";
-import { getExistingShapes } from "@/draw/http.ts";
-import { sendChatMessage } from "./Chat.tsx";
+import { getExistingShapes } from "@/draw/http";
+import { sendChatMessage } from "./Chat";
   
  const  Canvastest1 =  ( { roomId , socket } : {
   roomId : string ; 
@@ -74,8 +73,72 @@ import { sendChatMessage } from "./Chat.tsx";
         }
     }, [canvas, socket, roomId]);
 
+    useEffect(() => {
+        if (!canvas || !socket) return;
     
-
+        const fetchExistingShapes = async () => {
+            try {
+                const existingShapes = await getExistingShapes(roomId);
+                if (existingShapes) {
+                    canvas.loadFromJSON(existingShapes, () => {
+                        canvas.renderAll();
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching existing shapes:", error);
+            }
+        };
+    
+        fetchExistingShapes();
+    
+        const handleMessage = (event: MessageEvent) => {
+            try {
+                const receivedData = JSON.parse(event.data);
+                console.log("Message Received:", receivedData);
+        
+                // Ensure message exists and is a string
+                if (receivedData.type === "chatReceive" && receivedData.message) {
+                    try {
+                        // Parse the message string into an array of objects
+                        const parsedObjects = JSON.parse(receivedData.message);
+        
+                        if (!Array.isArray(parsedObjects)) {
+                            console.error("Error: Parsed objects are not an array", parsedObjects);
+                            return;
+                        }
+        
+                        // Extract `specefication` from each object
+                        const formattedObjects = parsedObjects.map(obj => obj.specefication);
+        
+                        // Ensure canvas is available before loading objects
+                        if (canvas) {
+                            canvas.loadFromJSON({ objects: formattedObjects }, () => {
+                                canvas.renderAll();
+                            });
+                        } else {
+                            console.error("Canvas is not initialized.");
+                        }
+                    } catch (parseError) {
+                        console.error("Error parsing message JSON:", parseError);
+                    }
+                } else {
+                    console.error("Invalid WebSocket data structure", receivedData);
+                }
+            } catch (error) {
+                console.error("Error processing WebSocket data:", error);
+            }
+        };
+        
+    
+        socket.addEventListener("message", handleMessage);
+    
+        return () => {
+            socket.removeEventListener("message", handleMessage);
+        };
+    }, [canvas, socket, roomId]);
+    
+    
+    
     // Functions
     const addRectangle = async () => {
         if (canvas) {
