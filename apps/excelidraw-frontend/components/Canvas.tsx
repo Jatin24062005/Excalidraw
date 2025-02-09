@@ -43,12 +43,10 @@ const Canvastest1 = ({
     async function draw(canvas: Canvas | null) {
         if (canvas && existingShape?.objects?.length) {
           canvas.loadFromJSON(existingShape, () => {
-            canvas.requestRenderAll();
+            canvas.renderAll();
           });
         }
       }
-
-      
       function UpdateExistingShape(socket: WebSocket | null) {
         if (!socket) return;
       
@@ -75,14 +73,15 @@ const Canvastest1 = ({
       
             const newObjects = messageArray.map((m) => m.specefication);
       
-            // ✅ Functional update to ensure we get the latest existingShape state
+            // ✅ Return updated state
             setExistingShape((prev) => {
               const updatedShapes = { objects: [ ...newObjects] };
+              console.log("✅ Updated existingShape:", updatedShapes);
+              return updatedShapes;
             });
           }
         };
       }
-      
       
   
   
@@ -106,31 +105,53 @@ const Canvastest1 = ({
   }, [canvasRef]);
 
   useEffect(() => {
-    if (!canvas) return;
+    if (canvas) {
+        // Listen to object added, removed, modified, and drawing events
+        const updateCanvas = () => {
+            console.log("Canvas updated, sending chat message..."); // Debugging log
+            sendChatMessage({ socket, canvas, roomId });
+        };
 
-    const updateCanvas = () => sendChatMessage({ socket, canvas, roomId });
+        canvas.on("object:added", () => {
+            console.log("Object added!"); // Debugging log
+            updateCanvas();
+        });
 
-    canvas.on("object:added", updateCanvas);
-    canvas.on("object:removed", updateCanvas);
-    canvas.on("object:modified", updateCanvas);
-    canvas.on("mouse:up", updateCanvas);
+        canvas.on("object:removed", () => {
+            console.log("Object removed!"); // Debugging log
+            updateCanvas();
+        });
 
-    sendChatMessage({ socket, canvas, roomId });
-    draw(canvas);
+        canvas.on("object:modified", () => {
+            console.log("Object modified!"); // Debugging log
+            updateCanvas();
+        });
 
-    return () => {
-      canvas.off("object:added", updateCanvas);
-      canvas.off("object:removed", updateCanvas);
-      canvas.off("object:modified", updateCanvas);
-      canvas.off("mouse:up", updateCanvas);
-    };
-  }, [canvas]);
+        canvas.on("mouse:up", () => {
+            console.log("Mouse up event triggered!"); // Debugging log
+            updateCanvas();
+        });
+
+        // Send initial canvas data when first loaded
+        sendChatMessage({ socket, canvas, roomId });
+
+        return () => {
+            // Cleanup event listeners
+            canvas.off("object:added", updateCanvas);
+            canvas.off("object:removed", updateCanvas);
+            canvas.off("object:modified", updateCanvas);
+            canvas.off("mouse:up", updateCanvas);
+        };
+    }
+}, [canvas, socket, roomId]);
 
   useEffect(()=>{
     UpdateExistingShape(socket);
-    draw(canvas);
-  },[canvas,socket,roomId])
+  },[socket.onmessage]);
 
+  useEffect(()=>{
+    draw(canvas);
+  },[existingShape])
   // Functions
   const addRectangle = () => {
     if (!canvas) return;
@@ -240,7 +261,7 @@ const Canvastest1 = ({
       />
     </div>
   );
-};
+};  
 
 
 export default Canvastest1;

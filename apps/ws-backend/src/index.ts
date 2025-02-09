@@ -83,23 +83,12 @@ wss.on('connection', function connection(ws, request) {
       const roomId = parsedData.roomId;
       const message = parsedData.message;
 
-      await prismaClient.chat.create({
-        data: {
-          roomId: Number(roomId),
-          message,
-          userId
-        }
-      });
+
 
       users.forEach(user => {
         if (user.rooms.includes(roomId)) {
-          const payload = JSON.stringify({
-            type: "chatReceive",
-            message: message,
-            roomId
-          });
-          console.log(payload);
-          user.ws.send(JSON.stringify({
+          
+           user.ws.send(JSON.stringify({
             type: "chatReceive",
             message: message,
             roomId
