@@ -20,6 +20,7 @@ const Canvastest1 = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [canvas, setCanvas] = useState<Canvas | null>(null);
+  const prevShapeRef = useRef<any>(null);
   const [existingShape, setExistingShape] = useState<any>({
     objects: [
       {
@@ -40,11 +41,13 @@ const Canvastest1 = ({
     ],
   });
 
-    async function draw(canvas: Canvas | null) {
-        if (canvas && existingShape?.objects?.length) {
+      async function draw(canvas: Canvas | null) {
+        if (!canvas || !existingShape?.objects?.length) return;
+    
+        if (JSON.stringify(prevShapeRef.current) !== JSON.stringify(existingShape)) {
           canvas.loadFromJSON(existingShape, () => {
-            canvas.renderAll();
           });
+          prevShapeRef.current = existingShape; // ✅ Update reference to prevent infinite loop
         }
       }
       function UpdateExistingShape(socket: WebSocket | null) {
@@ -75,7 +78,7 @@ const Canvastest1 = ({
       
             // ✅ Return updated state
             setExistingShape((prev) => {
-              const updatedShapes = { objects: [ ...newObjects] };
+              const updatedShapes = { objects: [...newObjects] };
               console.log("✅ Updated existingShape:", updatedShapes);
               return updatedShapes;
             });
@@ -151,7 +154,8 @@ const Canvastest1 = ({
 
   useEffect(()=>{
     draw(canvas);
-  },[existingShape])
+  },[])
+
   // Functions
   const addRectangle = () => {
     if (!canvas) return;
