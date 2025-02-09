@@ -14,7 +14,6 @@ export const sendChatMessage =({socket,canvas,roomId}:{socket:WebSocket; canvas:
             roomId,
             message: JSON.stringify(shapes),
         }
-        console.log(payload);
         socket.send(JSON.stringify(payload));
         
        }

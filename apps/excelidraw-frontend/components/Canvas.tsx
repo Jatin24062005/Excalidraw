@@ -1,250 +1,246 @@
 "use client";
-import { Canvas, Circle, Rect ,PencilBrush, ObjectModifyingLayoutContext} from "fabric";
 import { useEffect, useRef, useState } from "react";
-import { SquareIcon, CircleIcon, PencilIcon, EraserIcon, HandIcon } from "./Icons.jsx"; // Assuming you have EraserIcon and HandIcon
-import { Setting } from '../app/canvas/[roomId]/setting.jsx';
-import { getExistingShapes } from "@/draw/http";
+import { Canvas, Circle, Rect, PencilBrush } from "fabric";
+import {
+  SquareIcon,
+  CircleIcon,
+  PencilIcon,
+  EraserIcon,
+  HandIcon,
+} from "./Icons.jsx";
+import { Setting } from "../app/canvas/[roomId]/setting.jsx";
 import { sendChatMessage } from "./Chat";
-  
- const  Canvastest1 =  ( { roomId , socket } : {
-  roomId : string ; 
-  socket:WebSocket;
+
+const Canvastest1 = ({
+  roomId,
+  socket,
+}: {
+  roomId: string;
+  socket: WebSocket;
 }) => {
-    const canvasRef = useRef(null);
-    const [canvas, setCanvas] = useState<Canvas | null>(null);
-    const [existingShape , setExistingShape]= useState<object>( {
-            "version": "5.3.0",
-            "objects": [
-                {
-                    "type": "rect",
-                    "left": 100,
-                    "top": 100,
-                    "width": 100,
-                    "height": 100,
-                    "fill": "red"
-                },
-                {
-                    "type": "circle",
-                    "left": 250,
-                    "top": 150,
-                    "radius": 50,
-                    "fill": "blue"
-                }
-            ]
-        });
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [canvas, setCanvas] = useState<Canvas | null>(null);
+  const [existingShape, setExistingShape] = useState<any>({
+    objects: [
+      {
+        type: "rect",
+        left: 100,
+        top: 100,
+        width: 100,
+        height: 100,
+        fill: "red",
+      },
+      {
+        type: "circle",
+        left: 250,
+        top: 150,
+        radius: 50,
+        fill: "blue",
+      },
+    ],
+  });
+
+    async function draw(canvas: Canvas | null) {
+        if (canvas && existingShape?.objects?.length) {
+          canvas.loadFromJSON(existingShape, () => {
+            canvas.requestRenderAll();
+          });
+        }
+      }
+
+      
+      function UpdateExistingShape(socket: WebSocket | null) {
+        if (!socket) return;
+      
+        socket.onmessage = (e) => {
+          let res;
+          try {
+            res = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+          } catch (error) {
+            console.error("❌ Error parsing WebSocket message:", error, e.data);
+            return;
+          }
+      
+          if (res.type === "chatReceive" && res.message) {
+            let message;
+            try {
+              message = typeof res.message === "string" ? JSON.parse(res.message) : res.message;
+            } catch (error) {
+              console.error("❌ Error parsing 'message' field:", error, res.message);
+              return;
+            }
+      
+            // Ensure message is always an array
+            const messageArray = Array.isArray(message) ? message : [message];
+      
+            const newObjects = messageArray.map((m) => m.specefication);
+      
+            // ✅ Functional update to ensure we get the latest existingShape state
+            setExistingShape((prev) => {
+              const updatedShapes = { objects: [ ...newObjects] };
+            });
+          }
+        };
+      }
+      
+      
   
-         function draw(canvas:Canvas| null){
-            canvas?.loadFromJSON(existingShape,()=>{
-                canvas.renderAll();
-            })
-         }
+  
 
-    useEffect(() => {
-        if (canvasRef.current) {
-            const initCanvas = new Canvas(canvasRef.current, {
-                width: window.innerWidth,
-                height: window.innerHeight,
-            });
+  // Load existing shapes on startup
+  useEffect( () => {
+    if (!canvasRef.current) return;
 
-            initCanvas.backgroundColor = "#13171c";
-            initCanvas.renderAll();
-            setCanvas(initCanvas);
-            draw(canvas);
-           
-            return () => {
-                initCanvas.dispose();
-            };
-        }
-    }, [canvasRef]);
-
-    useEffect(() => {
-        if (canvas) {
-            // Listen to object added, removed, modified, and drawing events
-            const updateCanvas = () => {
-                console.log("Canvas updated, sending chat message..."); // Debugging log
-                sendChatMessage({ socket, canvas, roomId });
-            };
-
-            canvas.on("object:added", () => {
-                console.log("Object added!"); // Debugging log
-                updateCanvas();
-            });
-
-            canvas.on("object:removed", () => {
-                console.log("Object removed!"); // Debugging log
-                updateCanvas();
-            });
-
-            canvas.on("object:modified", () => {
-                console.log("Object modified!"); // Debugging log
-                updateCanvas();
-            });
-
-            canvas.on("mouse:up", () => {
-                console.log("Mouse up event triggered!"); // Debugging log
-                updateCanvas();
-            });
-
-            // Send initial canvas data when first loaded
-            sendChatMessage({ socket, canvas, roomId });
-
-            return () => {
-                // Cleanup event listeners
-                canvas.off("object:added", updateCanvas);
-                canvas.off("object:removed", updateCanvas);
-                canvas.off("object:modified", updateCanvas);
-                canvas.off("mouse:up", updateCanvas);
-            };
-        }
-    }, [canvas, socket, roomId]);
-
+    const initCanvas = new Canvas(canvasRef.current, {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      backgroundColor: "#13171c",
+    });
+    initCanvas.renderAll();
+    setCanvas(initCanvas);
     
-    
-    
-    // Functions
-    const addRectangle = async () => {
-        if (canvas) {
-            const rect = new Rect({
-                top: 100,
-                left: 50,
-                width: 250,
-                height: 175,
-                fill: "#669bbc",
-                rx: 10,
-                ry: 10,
-            });
 
-            canvas.add(rect);
-            
-            
-        }
+    return () => {
+      initCanvas.dispose();
     };
-    
-    const addCircle = () => {
-        if (canvas) {
-            const circle = new Circle({
-                top: 150,
-                left: 150,
-                radius: 100,
-                fill: "#c1121f",
-            });
-            canvas.add(circle);
-        }
+  }, [canvasRef]);
+
+  useEffect(() => {
+    if (!canvas) return;
+
+    const updateCanvas = () => sendChatMessage({ socket, canvas, roomId });
+
+    canvas.on("object:added", updateCanvas);
+    canvas.on("object:removed", updateCanvas);
+    canvas.on("object:modified", updateCanvas);
+    canvas.on("mouse:up", updateCanvas);
+
+    sendChatMessage({ socket, canvas, roomId });
+    draw(canvas);
+
+    return () => {
+      canvas.off("object:added", updateCanvas);
+      canvas.off("object:removed", updateCanvas);
+      canvas.off("object:modified", updateCanvas);
+      canvas.off("mouse:up", updateCanvas);
     };
+  }, [canvas]);
 
-    const activatePencil = () => {
-        if (canvas) {
-            const pencilBrush = new PencilBrush(canvas);
-            pencilBrush.color = "#ffffff"; // Pencil color
-            pencilBrush.width = 5; // Pencil stroke width
-            canvas.isDrawingMode = true; // Enable drawing mode
-            canvas.freeDrawingBrush = pencilBrush; // Assign brush to canvas
-        }
-    };
+  useEffect(()=>{
+    UpdateExistingShape(socket);
+    draw(canvas);
+  },[canvas,socket,roomId])
 
-    const activateEraser = () => {
-        if (canvas) {
-            canvas.isDrawingMode = false; // Disable drawing mode
-            canvas.selection = false; // Disable selection
-            canvas.defaultCursor = "crosshair"; // Change cursor to indicate eraser mode
+  // Functions
+  const addRectangle = () => {
+    if (!canvas) return;
+    const rect = new Rect({
+      top: 100,
+      left: 50,
+      width: 250,
+      height: 175,
+      fill: "#669bbc",
+      rx: 10,
+      ry: 10,
+    });
+    canvas.add(rect);
+  };
 
-            const eraseObject = (e) => {
-                const pointer = canvas.getPointer(e.e); // Get mouse position
-                const objects = canvas.getObjects(); // Get all objects on the canvas
+  const addCircle = () => {
+    if (!canvas) return;
+    const circle = new Circle({
+      top: 150,
+      left: 150,
+      radius: 100,
+      fill: "#c1121f",
+    });
+    canvas.add(circle);
+  };
 
-                objects.forEach((obj) => {
-                    if (obj.containsPoint(pointer)) { // Check if the pointer is within the object
-                        canvas.remove(obj); // Remove the object
-                    }
-                });
-            };
+  const activatePencil = () => {
+    if (!canvas) return;
+    const pencilBrush = new PencilBrush(canvas);
+    pencilBrush.color = "#ffffff";
+    pencilBrush.width = 5;
+    canvas.isDrawingMode = true;
+    canvas.freeDrawingBrush = pencilBrush;
+  };
 
-            // Add event listener for erasing
-            canvas.on("mouse:down", (e) => {
-                eraseObject(e);
-                canvas.on("mouse:move", eraseObject); // Enable continuous erasing while dragging
-            });
+  const activateEraser = () => {
+    if (!canvas) return;
+    canvas.isDrawingMode = false;
+    canvas.selection = false;
 
-            canvas.on("mouse:up", () => {
-                canvas.off("mouse:move", eraseObject); // Stop erasing on mouse up
-            });
-        }
-    };
-
-    const activateHandTool = () => {
-        if (canvas) {
-            canvas.isDrawingMode = false; // Disable drawing mode
-            canvas.selection = false; // Disable selection
-            canvas.defaultCursor = "grab"; // Set cursor to "grab"
-
-            // Enable panning
-            const enablePanning = (e) => {
-                if (e.e.type === "mousedown") {
-                    canvas.isDragging = true;
-                    canvas.selection = false;
-                    canvas.lastPosX = e.e.clientX;
-                    canvas.lastPosY = e.e.clientY;
-                } else if (e.e.type === "mousemove" && canvas.isDragging) {
-                    const vpt = canvas.viewportTransform;
-                    vpt[4] += e.e.clientX - canvas.lastPosX;
-                    vpt[5] += e.e.clientY - canvas.lastPosY;
-                    canvas.requestRenderAll();
-                    canvas.lastPosX = e.e.clientX;
-                    canvas.lastPosY = e.e.clientY;
-                } else if (e.e.type === "mouseup") {
-                    canvas.isDragging = false;
-                    canvas.selection = true;
-                }
-            };
-
-            // Attach panning events
-            canvas.on("mouse:down", enablePanning);
-            canvas.on("mouse:move", enablePanning);
-            canvas.on("mouse:up", enablePanning);
-        }
+    const eraseObject = (e) => {
+      const pointer = canvas.getPointer(e.e);
+      const objects = canvas.getObjects();
+      objects.forEach((obj) => {
+        if (obj.containsPoint(pointer)) canvas.remove(obj);
+      });
     };
 
-    return (
-        <div>
-            <div className="z-20 fixed bg-[#232329] p-1 m-4 flex h-fit rounded-md max-w-screen-md space-x-4">
-                <span
-                    className="cursor-pointer p-2 hover:bg-gray-700 rounded-sm"
-                    onClick={addRectangle}
-                >
-                    <SquareIcon className="fill-white" />
-                </span>
-                <span
-                    className="cursor-pointer p-2 hover:bg-gray-700 rounded-sm"
-                    onClick={addCircle}
-                >
-                    <CircleIcon className="fill-white" />
-                </span>
-                <span
-                    className="cursor-pointer p-2 hover:bg-gray-700 rounded-sm"
-                    onClick={activatePencil}
-                >
-                    <PencilIcon className="fill-white" />
-                </span>
-                <span
-                    className="cursor-pointer p-2 hover:bg-gray-700 rounded-sm"
-                    onClick={activateEraser}
-                >
-                    <EraserIcon className="fill-white" />
-                </span>
-                <span
-                    className="cursor-pointer p-2 hover:bg-gray-700 rounded-sm"
-                    onClick={activateHandTool}
-                >
-                    <HandIcon className="fill-white" />
-                </span>
-            </div>
-            <canvas ref={canvasRef} />
-            <Setting
-                className="fixed inset-y-1/2 -translate-y-1/2 right-4"
-                canvas={canvas}
-            />
-        </div>
-    );
+    canvas.on("mouse:down", (e) => {
+      eraseObject(e);
+      canvas.on("mouse:move", eraseObject);
+    });
+
+    canvas.on("mouse:up", () => canvas.off("mouse:move", eraseObject));
+  };
+  const activateHandTool = () => {
+    if (canvas) {
+      canvas.isDrawingMode = false; // Disable drawing mode
+      canvas.selection = true; // Allow selection
+      canvas.defaultCursor = "default"; // Reset to normal cursor
+
+      // Remove any dragging event listeners that may have been added
+      canvas.off("mouse:down");
+      canvas.off("mouse:move");
+      canvas.off("mouse:up");
+    }}
+  
+
+  return (
+    <div>
+      <div className="z-20 fixed bg-[#232329] p-1 m-4 flex h-fit rounded-md max-w-screen-md space-x-4">
+        <span
+          className="cursor-pointer p-2 hover:bg-gray-700 rounded-sm"
+          onClick={addRectangle}
+        >
+          <SquareIcon className="fill-white" />
+        </span>
+        <span
+          className="cursor-pointer p-2 hover:bg-gray-700 rounded-sm"
+          onClick={addCircle}
+        >
+          <CircleIcon className="fill-white" />
+        </span>
+        <span
+          className="cursor-pointer p-2 hover:bg-gray-700 rounded-sm"
+          onClick={activatePencil}
+        >
+          <PencilIcon className="fill-white" />
+        </span>
+        <span
+          className="cursor-pointer p-2 hover:bg-gray-700 rounded-sm"
+          onClick={activateEraser}
+        >
+          <EraserIcon className="fill-white" />
+        </span>
+        <span
+          className="cursor-pointer p-2 hover:bg-gray-700 rounded-sm"
+          onClick={activateHandTool}
+        >
+          <HandIcon className="fill-white" />
+        </span>
+      </div>
+      <canvas ref={canvasRef} />
+      <Setting
+        className="fixed inset-y-1/2 -translate-y-1/2 right-4"
+        canvas={canvas}
+      />
+    </div>
+  );
 };
 
-export default Canvastest1
+
+export default Canvastest1;

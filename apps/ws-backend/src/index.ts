@@ -93,7 +93,12 @@ wss.on('connection', function connection(ws, request) {
 
       users.forEach(user => {
         if (user.rooms.includes(roomId)) {
-          console.log('Sending Message to each user');
+          const payload = JSON.stringify({
+            type: "chatReceive",
+            message: message,
+            roomId
+          });
+          console.log(payload);
           user.ws.send(JSON.stringify({
             type: "chatReceive",
             message: message,
